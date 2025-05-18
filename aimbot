@@ -1,1 +1,126 @@
-aimbot venas com varias opções 
+--// Serviços
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+local Mouse = LocalPlayer:GetMouse()
+
+--// Configurações
+local MiraParte = "Head"
+local FOV = 100
+local LinhasAtivas = {}
+local TextosAtivos = {}
+
+--// Estados Globais
+getgenv().AimbotAtivado = false
+getgenv().ESPAtivado = false
+
+--// Interface Fluent
+local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
+
+local Window = Fluent:CreateWindow({
+    Title = "Venas Aimbot",
+    SubTitle = "by @seunome",
+    TabWidth = 160,
+    Size = UDim2.fromOffset(580, 360),
+    Acrylic = true,
+    Theme = "Dark",
+    MinimizeKey = Enum.KeyCode.RightControl
+})
+
+local MainTab = Window:AddTab({ Title = "Main", Icon = "Target" })
+
+MainTab:AddToggle("AimbotToggle", {
+    Title = "Aimbot",
+    Default = false,
+    Callback = function(state)
+        getgenv().AimbotAtivado = state
+    end
+})
+
+MainTab:AddToggle("ESPToggle", {
+    Title = "ESP (linha + nome/time)",
+    Default = false,
+    Callback = function(state)
+        getgenv().ESPAtivado = state
+
+        if not state then
+            for _, v in pairs(LinhasAtivas) do if v.Remove then v:Remove() end end
+            for _, v in pairs(TextosAtivos) do if v.Remove then v:Remove() end end
+            LinhasAtivas = {}
+            TextosAtivos = {}
+        end
+    end
+})
+
+--// Função para encontrar o jogador mais próximo do mouse
+local function JogadorMaisProximo()
+    local alvo = nil
+    local menorDistancia = FOV
+
+    for _, jogador in pairs(Players:GetPlayers()) do
+        if jogador ~= LocalPlayer and jogador.Character and jogador.Character:FindFirstChild(MiraParte) then
+            local parte = jogador.Character[MiraParte]
+            local pos, visivel = Camera:WorldToViewportPoint(parte.Position)
+
+            if visivel then
+                local dist = (Vector2.new(pos.X, pos.Y) - Vector2.new(Mouse.X, Mouse.Y)).Magnitude
+                if dist < menorDistancia then
+                    menorDistancia = dist
+                    alvo = parte
+                end
+            end
+        end
+    end
+
+    return alvo
+end
+
+--// Loop do Aimbot
+RunService.RenderStepped:Connect(function()
+    if getgenv().AimbotAtivado then
+        local alvo = JogadorMaisProximo()
+        if alvo then
+            Camera.CFrame = CFrame.new(Camera.CFrame.Position, alvo.Position)
+        end
+    end
+end)
+
+--// Loop do ESP com nome + time
+RunService.RenderStepped:Connect(function()
+    if getgenv().ESPAtivado then
+        for _, v in pairs(LinhasAtivas) do if v.Remove then v:Remove() end end
+        for _, v in pairs(TextosAtivos) do if v.Remove then v:Remove() end end
+        LinhasAtivas = {}
+        TextosAtivos = {}
+
+        for _, jogador in pairs(Players:GetPlayers()) do
+            if jogador ~= LocalPlayer and jogador.Character and jogador.Character:FindFirstChild("Head") then
+                local head = jogador.Character.Head
+                local headPos, visivel = Camera:WorldToViewportPoint(head.Position)
+                if visivel then
+                    -- Linha verde
+                    local linha = Drawing.new("Line")
+                    linha.Visible = true
+                    linha.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+                    linha.To = Vector2.new(headPos.X, headPos.Y)
+                    linha.Color = Color3.fromRGB(0, 255, 0)
+                    linha.Thickness = 2
+                    linha.Transparency = 1
+                    table.insert(LinhasAtivas, linha)
+
+                    -- Texto com nome + time
+                    local texto = Drawing.new("Text")
+                    texto.Visible = true
+                    texto.Text = string.format("%s - time %s", jogador.Name, jogador.Team and jogador.Team.Name or "Desconhecido")
+                    texto.Position = Vector2.new(headPos.X, headPos.Y - 25)
+                    texto.Center = true
+                    texto.Outline = true
+                    texto.Size = 14
+                    texto.Color = Color3.fromRGB(255, 255, 255)
+                    table.insert(TextosAtivos, texto)
+                end
+            end
+        end
+    end
+end)
