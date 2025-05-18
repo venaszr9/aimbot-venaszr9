@@ -14,13 +14,15 @@ local TextosAtivos = {}
 --// Estados Globais
 getgenv().AimbotAtivado = false
 getgenv().ESPAtivado = false
+getgenv().AimbotModo = "Proximo" -- ou "Alvo"
+getgenv().AimbotAlvo = ""
 
---// Interface Fluent
+--// Fluent UI
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 
 local Window = Fluent:CreateWindow({
     Title = "Venas Aimbot",
-    SubTitle = "by @venaszr9",
+    SubTitle = "by @venas",
     TabWidth = 160,
     Size = UDim2.fromOffset(580, 360),
     Acrylic = true,
@@ -35,6 +37,26 @@ MainTab:AddToggle("AimbotToggle", {
     Default = false,
     Callback = function(state)
         getgenv().AimbotAtivado = state
+    end
+})
+
+MainTab:AddDropdown("ModoAimbot", {
+    Title = "Modo do Aimbot",
+    Values = { "Proximo", "Alvo" },
+    Default = "Proximo",
+    Callback = function(value)
+        getgenv().AimbotModo = value
+    end
+})
+
+MainTab:AddInput("NomeDoAlvo", {
+    Title = "Nome do Jogador Alvo",
+    Default = "",
+    Placeholder = "Ex: jogador123",
+    Numeric = false,
+    Finished = true,
+    Callback = function(text)
+        getgenv().AimbotAlvo = text
     end
 })
 
@@ -53,40 +75,50 @@ MainTab:AddToggle("ESPToggle", {
     end
 })
 
---// Função para encontrar o jogador mais próximo do mouse
-local function JogadorMaisProximo()
-    local alvo = nil
-    local menorDistancia = FOV
-
-    for _, jogador in pairs(Players:GetPlayers()) do
-        if jogador ~= LocalPlayer and jogador.Character and jogador.Character:FindFirstChild(MiraParte) then
-            local parte = jogador.Character[MiraParte]
-            local pos, visivel = Camera:WorldToViewportPoint(parte.Position)
-
-            if visivel then
-                local dist = (Vector2.new(pos.X, pos.Y) - Vector2.new(Mouse.X, Mouse.Y)).Magnitude
-                if dist < menorDistancia then
-                    menorDistancia = dist
-                    alvo = parte
+--// Função para obter alvo
+local function ObterAlvo()
+    if getgenv().AimbotModo == "Alvo" and getgenv().AimbotAlvo ~= "" then
+        for _, jogador in pairs(Players:GetPlayers()) do
+            if jogador ~= LocalPlayer and jogador.Name:lower():find(getgenv().AimbotAlvo:lower()) then
+                if jogador.Character and jogador.Character:FindFirstChild(MiraParte) then
+                    return jogador.Character[MiraParte]
                 end
             end
         end
-    end
+    else
+        local alvoMaisProximo = nil
+        local menorDistancia = FOV
 
-    return alvo
+        for _, jogador in pairs(Players:GetPlayers()) do
+            if jogador ~= LocalPlayer and jogador.Character and jogador.Character:FindFirstChild(MiraParte) then
+                local parte = jogador.Character[MiraParte]
+                local pos, visivel = Camera:WorldToViewportPoint(parte.Position)
+
+                if visivel then
+                    local dist = (Vector2.new(pos.X, pos.Y) - Vector2.new(Mouse.X, Mouse.Y)).Magnitude
+                    if dist < menorDistancia then
+                        menorDistancia = dist
+                        alvoMaisProximo = parte
+                    end
+                end
+            end
+        end
+
+        return alvoMaisProximo
+    end
 end
 
 --// Loop do Aimbot
 RunService.RenderStepped:Connect(function()
     if getgenv().AimbotAtivado then
-        local alvo = JogadorMaisProximo()
+        local alvo = ObterAlvo()
         if alvo then
             Camera.CFrame = CFrame.new(Camera.CFrame.Position, alvo.Position)
         end
     end
 end)
 
---// Loop do ESP com nome + time
+--// Loop do ESP
 RunService.RenderStepped:Connect(function()
     if getgenv().ESPAtivado then
         for _, v in pairs(LinhasAtivas) do if v.Remove then v:Remove() end end
@@ -109,7 +141,7 @@ RunService.RenderStepped:Connect(function()
                     linha.Transparency = 1
                     table.insert(LinhasAtivas, linha)
 
-                    -- Texto com nome + time
+                    -- Texto com nome e time
                     local texto = Drawing.new("Text")
                     texto.Visible = true
                     texto.Text = string.format("%s - time %s", jogador.Name, jogador.Team and jogador.Team.Name or "Desconhecido")
