@@ -20,7 +20,7 @@ local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/
 
 local Window = Fluent:CreateWindow({
     Title = "Venas Aimbot",
-    SubTitle = "by @seunome",
+    SubTitle = "by @venaszr9",
     TabWidth = 160,
     Size = UDim2.fromOffset(580, 360),
     Acrylic = true,
